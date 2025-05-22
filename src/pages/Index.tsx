@@ -4,8 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, AlertTriangle, RotateCcw, Users, Calendar } from "lucide-react";
+import { CheckCircle, AlertTriangle, RotateCcw, Users, Calendar, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 interface Flatmate {
   id: string;
@@ -30,8 +34,19 @@ interface ShoppingItem {
   assignedTo: number;
 }
 
+interface ChoreFormValues {
+  name: string;
+  frequency: string;
+}
+
 const Index = () => {
   const { toast } = useToast();
+  const form = useForm<ChoreFormValues>({
+    defaultValues: {
+      name: "",
+      frequency: "Weekly"
+    }
+  });
   
   const [flatmates] = useState<Flatmate[]>([
     { id: "1", name: "Alex", tasksCompleted: 8, color: "bg-blue-500" },
@@ -108,6 +123,24 @@ const Index = () => {
       title: "Item flagged as low! ⚠️",
       description: `${flaggerName} flagged this item as running low.`,
     });
+  };
+
+  const addNewChore = (values: ChoreFormValues) => {
+    const newChore: Chore = {
+      id: `${chores.length + 1}`,
+      name: values.name,
+      currentTurn: 0, // Start with the first flatmate
+      frequency: values.frequency
+    };
+    
+    setChores(prev => [...prev, newChore]);
+    
+    toast({
+      title: "New chore added! ✨",
+      description: `${values.name} has been added to the chore list.`,
+    });
+    
+    form.reset();
   };
 
   const urgentItems = shoppingItems.filter(item => item.isLow);
@@ -195,11 +228,63 @@ const Index = () => {
 
           {/* Current Chores */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Current Chores
               </CardTitle>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="sm" className="h-8">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Chore
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Add New Chore</SheetTitle>
+                    <SheetDescription>
+                      Add a new chore to the rotation list. Once added, the chore will be assigned starting with Alex.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="py-6">
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(addNewChore)} className="space-y-6">
+                        <FormItem>
+                          <FormLabel>Chore Name</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g. Mop the floors" 
+                              {...form.register("name")}
+                              required
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel>Frequency</FormLabel>
+                          <FormControl>
+                            <select 
+                              className="w-full p-2 border rounded-md"
+                              {...form.register("frequency")}
+                            >
+                              <option value="Daily">Daily</option>
+                              <option value="Weekly">Weekly</option>
+                              <option value="Bi-weekly">Bi-weekly</option>
+                              <option value="Monthly">Monthly</option>
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                        <SheetFooter>
+                          <SheetClose asChild>
+                            <Button type="button" variant="outline">Cancel</Button>
+                          </SheetClose>
+                          <Button type="submit">Add Chore</Button>
+                        </SheetFooter>
+                      </form>
+                    </Form>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
