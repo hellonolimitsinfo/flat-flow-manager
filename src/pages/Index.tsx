@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, AlertTriangle, RotateCcw, Users, Calendar, Plus } from "lucide-react";
+import { CheckCircle, AlertTriangle, RotateCcw, Users, Calendar, Plus, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -33,6 +34,16 @@ interface ShoppingItem {
   assignedTo: number;
 }
 
+interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  paidBy: string;
+  splitType: 'all' | 'individual';
+  bankDetails: string;
+  date: Date;
+}
+
 interface ChoreFormValues {
   name: string;
   frequency: string;
@@ -40,6 +51,14 @@ interface ChoreFormValues {
 
 interface ShoppingItemFormValues {
   name: string;
+}
+
+interface ExpenseFormValues {
+  description: string;
+  amount: string;
+  paidBy: string;
+  splitType: 'all' | 'individual';
+  bankDetails: string;
 }
 
 const Index = () => {
@@ -54,6 +73,16 @@ const Index = () => {
   const shoppingForm = useForm<ShoppingItemFormValues>({
     defaultValues: {
       name: ""
+    }
+  });
+
+  const expenseForm = useForm<ExpenseFormValues>({
+    defaultValues: {
+      description: "",
+      amount: "",
+      paidBy: "",
+      splitType: "all",
+      bankDetails: ""
     }
   });
   
@@ -75,6 +104,11 @@ const Index = () => {
     { id: "2", name: "Dish Soap", isLow: false, assignedTo: 2 },
     { id: "3", name: "Milk", isLow: true, flaggedBy: "Alex", assignedTo: 0 },
     { id: "4", name: "Cleaning Supplies", isLow: false, assignedTo: 1 },
+  ]);
+
+  const [expenses, setExpenses] = useState<Expense[]>([
+    { id: "1", description: "Groceries", amount: 45.50, paidBy: "Alex", splitType: "all", bankDetails: "Alex Bank - 1234567890", date: new Date() },
+    { id: "2", description: "Internet Bill", amount: 60.00, paidBy: "Sam", splitType: "all", bankDetails: "Sam Bank - 0987654321", date: new Date() },
   ]);
 
   // Set dark theme on component mount
@@ -154,7 +188,7 @@ const Index = () => {
       description: `${values.name} has been added to the chore list.`,
     });
     
-    form.reset();
+    choreForm.reset();
   };
 
   const addNewShoppingItem = (values: ShoppingItemFormValues) => {
@@ -173,6 +207,27 @@ const Index = () => {
     });
     
     shoppingForm.reset();
+  };
+
+  const addNewExpense = (values: ExpenseFormValues) => {
+    const newExpense: Expense = {
+      id: `${expenses.length + 1}`,
+      description: values.description,
+      amount: parseFloat(values.amount),
+      paidBy: values.paidBy,
+      splitType: values.splitType,
+      bankDetails: values.bankDetails,
+      date: new Date()
+    };
+    
+    setExpenses(prev => [...prev, newExpense]);
+    
+    toast({
+      title: "New expense added! 💰",
+      description: `${values.description} has been added to expenses.`,
+    });
+    
+    expenseForm.reset();
   };
 
   const urgentItems = shoppingItems.filter(item => item.isLow);
@@ -229,7 +284,7 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-2 xl:grid-cols-4 gap-8">
           {/* Flatmates Stats */}
           <Card className="bg-gray-800/80 border-gray-700">
             <CardHeader>
@@ -442,6 +497,130 @@ const Index = () => {
                             Bought
                           </Button>
                         )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Expenses */}
+          <Card className="bg-gray-800/80 border-gray-700">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="flex items-center gap-2 text-gray-100">
+                <DollarSign className="h-5 w-5" />
+                Expenses
+              </CardTitle>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-600">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Expense
+                  </Button>
+                </SheetTrigger>
+                <SheetContent className="bg-gray-800 border-gray-700">
+                  <SheetHeader>
+                    <SheetTitle className="text-gray-100">Add New Expense</SheetTitle>
+                    <SheetDescription className="text-gray-400">
+                      Add a new expense and specify how it should be split among flatmates.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="py-6">
+                    <Form {...expenseForm}>
+                      <form onSubmit={expenseForm.handleSubmit(addNewExpense)} className="space-y-6">
+                        <FormItem>
+                          <FormLabel className="text-gray-200">Expense Description</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g. Groceries, Internet Bill" 
+                              {...expenseForm.register("description")}
+                              required
+                              className="bg-gray-700 border-gray-600 text-gray-100"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="text-gray-200">Amount ($)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number"
+                              step="0.01"
+                              placeholder="e.g. 45.50" 
+                              {...expenseForm.register("amount")}
+                              required
+                              className="bg-gray-700 border-gray-600 text-gray-100"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="text-gray-200">Paid By</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g. Alex" 
+                              {...expenseForm.register("paidBy")}
+                              required
+                              className="bg-gray-700 border-gray-600 text-gray-100"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="text-gray-200">Split Type</FormLabel>
+                          <FormControl>
+                            <select 
+                              className="w-full p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-100"
+                              {...expenseForm.register("splitType")}
+                            >
+                              <option value="all">Split with all members</option>
+                              <option value="individual">Split individually</option>
+                            </select>
+                          </FormControl>
+                        </FormItem>
+                        <FormItem>
+                          <FormLabel className="text-gray-200">Bank Details</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="e.g. Bank Name - Account Number" 
+                              {...expenseForm.register("bankDetails")}
+                              required
+                              className="bg-gray-700 border-gray-600 text-gray-100 min-h-[80px]"
+                            />
+                          </FormControl>
+                        </FormItem>
+                        <SheetFooter>
+                          <SheetClose asChild>
+                            <Button type="button" variant="outline" className="border-gray-600 text-gray-300">Cancel</Button>
+                          </SheetClose>
+                          <Button type="submit" className="bg-blue-700 hover:bg-blue-800">Add Expense</Button>
+                        </SheetFooter>
+                      </form>
+                    </Form>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {expenses.map(expense => (
+                  <div key={expense.id} className="p-4 border rounded-lg border-gray-700 bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-gray-200">{expense.description}</h3>
+                      <span className="text-lg font-bold text-green-400">${expense.amount.toFixed(2)}</span>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Paid by:</span>
+                        <span className="text-gray-300">{expense.paidBy}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">Split:</span>
+                        <Badge variant="outline" className="text-gray-300">
+                          {expense.splitType === 'all' ? 'All members' : 'Individual'}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        Bank: {expense.bankDetails}
                       </div>
                     </div>
                   </div>
