@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle, AlertTriangle, RotateCcw, Users, Calendar, Plus, DollarSign } from "lucide-react";
+import { CheckCircle, AlertTriangle, RotateCcw, Users, Calendar, Plus, DollarSign, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface Flatmate {
   id: string;
@@ -135,6 +136,14 @@ const Index = () => {
     });
   };
 
+  const deleteChore = (choreId: string) => {
+    setChores(prev => prev.filter(chore => chore.id !== choreId));
+    toast({
+      title: "Chore deleted",
+      description: "The chore has been removed from the list.",
+    });
+  };
+
   const completeShopping = (itemId: string) => {
     setShoppingItems(prev => prev.map(item => {
       if (item.id === itemId) {
@@ -152,6 +161,22 @@ const Index = () => {
     toast({
       title: "Shopping completed! 🛒",
       description: "Thanks for getting the supplies! Assignment rotated.",
+    });
+  };
+
+  const deleteShoppingItem = (itemId: string) => {
+    setShoppingItems(prev => prev.filter(item => item.id !== itemId));
+    toast({
+      title: "Shopping item deleted",
+      description: "The item has been removed from the list.",
+    });
+  };
+
+  const deleteExpense = (expenseId: string) => {
+    setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
+    toast({
+      title: "Expense deleted",
+      description: "The expense has been removed from the list.",
     });
   };
 
@@ -232,6 +257,19 @@ const Index = () => {
 
   const urgentItems = shoppingItems.filter(item => item.isLow);
 
+  const calculateExpenseDebts = (expense: Expense) => {
+    if (expense.splitType === 'all') {
+      const amountPerPerson = expense.amount / flatmates.length;
+      return flatmates
+        .filter(flatmate => flatmate.name !== expense.paidBy)
+        .map(flatmate => ({
+          name: flatmate.name,
+          amount: amountPerPerson
+        }));
+    }
+    return [];
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
       <div className="container mx-auto px-4 py-8">
@@ -284,35 +322,7 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-2 xl:grid-cols-4 gap-8">
-          {/* Flatmates Stats */}
-          <Card className="bg-gray-800/80 border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-100">
-                <Users className="h-5 w-5" />
-                Flatmate Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {flatmates.map((flatmate, index) => (
-                  <div key={flatmate.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded-full ${flatmate.color}`}></div>
-                      <span className="font-medium text-gray-200">{flatmate.name}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-gray-100">
-                        {flatmate.tasksCompleted}
-                      </div>
-                      <div className="text-sm text-gray-400">tasks completed</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
+        <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-8">
           {/* Current Chores */}
           <Card className="bg-gray-800/80 border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -380,7 +390,24 @@ const Index = () => {
                   <div key={chore.id} className="p-4 border rounded-lg border-gray-700 bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium text-gray-200">{chore.name}</h3>
-                      <Badge variant="secondary" className="bg-gray-700 text-gray-300">{chore.frequency}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="bg-gray-700 text-gray-300">{chore.frequency}</Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-200 hover:bg-gray-700">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                            <DropdownMenuItem 
+                              onClick={() => deleteChore(chore.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-gray-700"
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -461,11 +488,28 @@ const Index = () => {
                   }`}>
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium text-gray-200">{item.name}</h3>
-                      {item.isLow && (
-                        <Badge variant="destructive" className="text-xs">
-                          Low Stock
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {item.isLow && (
+                          <Badge variant="destructive" className="text-xs">
+                            Low Stock
+                          </Badge>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-200 hover:bg-gray-700">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                            <DropdownMenuItem 
+                              onClick={() => deleteShoppingItem(item.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-gray-700"
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -605,7 +649,24 @@ const Index = () => {
                   <div key={expense.id} className="p-4 border rounded-lg border-gray-700 bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium text-gray-200">{expense.description}</h3>
-                      <span className="text-lg font-bold text-green-400">${expense.amount.toFixed(2)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-green-400">${expense.amount.toFixed(2)}</span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-200 hover:bg-gray-700">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                            <DropdownMenuItem 
+                              onClick={() => deleteExpense(expense.id)}
+                              className="text-red-400 hover:text-red-300 hover:bg-gray-700"
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                     
                     <div className="space-y-2">
@@ -619,6 +680,15 @@ const Index = () => {
                           {expense.splitType === 'all' ? 'All members' : 'Individual'}
                         </Badge>
                       </div>
+                      {expense.splitType === 'all' && (
+                        <div className="space-y-1">
+                          {calculateExpenseDebts(expense).map(debt => (
+                            <div key={debt.name} className="text-sm text-orange-400">
+                              {debt.name} owes £{debt.amount.toFixed(2)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className="text-xs text-gray-500 mt-2">
                         Bank: {expense.bankDetails}
                       </div>
@@ -629,6 +699,34 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Flatmates Stats - Moved to bottom */}
+        <Card className="mt-8 bg-gray-800/80 border-gray-700">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-100">
+              <Users className="h-5 w-5" />
+              Flatmate Stats
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {flatmates.map((flatmate, index) => (
+                <div key={flatmate.id} className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full ${flatmate.color}`}></div>
+                    <span className="font-medium text-gray-200">{flatmate.name}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-gray-100">
+                      {flatmate.tasksCompleted}
+                    </div>
+                    <div className="text-sm text-gray-400">tasks completed</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
