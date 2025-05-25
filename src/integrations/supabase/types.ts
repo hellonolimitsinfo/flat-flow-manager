@@ -262,7 +262,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_belongs_to_household: {
+        Args: { household_id: string; user_id: string }
+        Returns: boolean
+      }
+      user_is_household_admin: {
+        Args: { household_id: string; user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
