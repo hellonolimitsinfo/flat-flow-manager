@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { CheckCircle, AlertTriangle, RotateCcw, Users, Calendar, Plus, DollarSign, MoreHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,7 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHe
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 interface Flatmate {
   id: string;
@@ -64,6 +64,7 @@ interface ExpenseFormValues {
 
 const Index = () => {
   const { toast } = useToast();
+  
   const choreForm = useForm<ChoreFormValues>({
     defaultValues: {
       name: "",
@@ -202,7 +203,7 @@ const Index = () => {
     const newChore: Chore = {
       id: `${chores.length + 1}`,
       name: values.name,
-      currentTurn: 0, // Start with the first flatmate
+      currentTurn: 0,
       frequency: values.frequency
     };
     
@@ -221,7 +222,7 @@ const Index = () => {
       id: `${shoppingItems.length + 1}`,
       name: values.name,
       isLow: false,
-      assignedTo: 0 // Start with the first flatmate
+      assignedTo: 0
     };
     
     setShoppingItems(prev => [...prev, newItem]);
@@ -273,15 +274,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-100 mb-2">
-            🏠 Flatmate Flow
-          </h1>
-          <p className="text-lg text-gray-300">
-            Keep track of chores, shopping, and responsibilities
-          </p>
-        </div>
+        {/* Header with auth */}
+        <DashboardHeader />
 
         {/* Urgent Alerts */}
         {urgentItems.length > 0 && (
