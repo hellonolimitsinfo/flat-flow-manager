@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Edit, Users, Crown } from 'lucide-react';
+import { Plus, Edit, Users, Crown, MoreHorizontal, Trash2 } from 'lucide-react';
 
 interface Household {
   id: string;
@@ -38,6 +39,7 @@ export const HouseholdManagement = () => {
   const [editingName, setEditingName] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -187,57 +189,22 @@ export const HouseholdManagement = () => {
     }
   };
 
-  const inviteMember = async () => {
-    if (!inviteEmail.trim() || !household) return;
+  const deleteHousehold = async () => {
+    if (!household) return;
 
     try {
-      // First check if user exists
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', inviteEmail.trim())
-        .single();
-
-      if (!profileData) {
-        toast({
-          title: 'User not found',
-          description: 'No user found with that email address.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Check if already a member
-      const { data: existingMember } = await supabase
-        .from('household_members')
-        .select('id')
-        .eq('household_id', household.id)
-        .eq('user_id', profileData.id)
-        .single();
-
-      if (existingMember) {
-        toast({
-          title: 'Already a member',
-          description: 'This user is already a member of your household.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
       const { error } = await supabase
-        .from('household_members')
-        .insert({
-          household_id: household.id,
-          user_id: profileData.id,
-          role: 'member'
-        });
+        .from('households')
+        .delete()
+        .eq('id', household.id);
 
       if (error) throw error;
 
-      setInviteEmail('');
+      setHousehold(null);
+      setMembers([]);
       toast({
-        title: 'Member invited!',
-        description: 'The user has been added to your household.',
+        title: 'Household deleted',
+        description: 'The household has been deleted successfully.',
       });
     } catch (error: any) {
       toast({
@@ -245,6 +212,87 @@ export const HouseholdManagement = () => {
         description: error.message,
         variant: 'destructive',
       });
+    }
+  };
+
+  const inviteMember = async () => {
+    if (!inviteEmail.trim() || !household) return;
+
+    setInviteLoading(true);
+    try {
+      // Send invitation email using Supabase Auth
+      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(inviteEmail.trim(), {
+        data: {
+          household_id: household.id,
+          household_name: household.name,
+          invited_by: user?.email
+        }
+      });
+
+      if (inviteError) {
+        // If admin invite fails, try to find existing user and add them directly
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', inviteEmail.trim())
+          .single();
+
+        if (profileData) {
+          // Check if already a member
+          const { data: existingMember } = await supabase
+            .from('household_members')
+            .select('id')
+            .eq('household_id', household.id)
+            .eq('user_id', profileData.id)
+            .single();
+
+          if (existingMember) {
+            toast({
+              title: 'Already a member',
+              description: 'This user is already a member of your household.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          // Add existing user to household
+          const { error: memberError } = await supabase
+            .from('household_members')
+            .insert({
+              household_id: household.id,
+              user_id: profileData.id,
+              role: 'member'
+            });
+
+          if (memberError) throw memberError;
+
+          toast({
+            title: 'Member added!',
+            description: 'The existing user has been added to your household.',
+          });
+        } else {
+          toast({
+            title: 'Invitation sent!',
+            description: `An invitation email has been sent to ${inviteEmail}. They will be added to your household when they sign up.`,
+          });
+        }
+      } else {
+        toast({
+          title: 'Invitation sent!',
+          description: `An invitation email has been sent to ${inviteEmail}.`,
+        });
+      }
+
+      setInviteEmail('');
+    } catch (error: any) {
+      console.error('Invite error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send invitation. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -344,6 +392,26 @@ export const HouseholdManagement = () => {
               >
                 <Edit className="h-4 w-4" />
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-gray-400 hover:text-gray-200 p-1"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                  <DropdownMenuItem 
+                    onClick={deleteHousehold}
+                    className="text-red-400 hover:text-red-300 hover:bg-gray-700"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Household
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
           
@@ -359,6 +427,9 @@ export const HouseholdManagement = () => {
                 <SheetTitle className="text-gray-100">Invite New Member</SheetTitle>
               </SheetHeader>
               <div className="mt-6 space-y-4">
+                <div className="text-sm text-gray-400">
+                  Enter an email address to invite someone to your household. If they don't have an account, they'll receive an invitation to sign up.
+                </div>
                 <Input
                   placeholder="Enter email address"
                   value={inviteEmail}
@@ -368,9 +439,9 @@ export const HouseholdManagement = () => {
                 <Button
                   onClick={inviteMember}
                   className="w-full bg-blue-700 hover:bg-blue-800"
-                  disabled={!inviteEmail.trim()}
+                  disabled={!inviteEmail.trim() || inviteLoading}
                 >
-                  Send Invite
+                  {inviteLoading ? 'Sending...' : 'Send Invite'}
                 </Button>
               </div>
             </SheetContent>

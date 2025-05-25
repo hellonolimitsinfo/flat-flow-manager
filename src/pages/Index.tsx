@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -332,7 +333,7 @@ const Index = () => {
               </CardTitle>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-600">
+                  <Button size="sm" className="h-8 bg-blue-700 hover:bg-blue-800">
                     <Plus className="h-4 w-4 mr-1" />
                     <span className="hidden sm:inline">Add Chore</span>
                   </Button>
@@ -421,7 +422,7 @@ const Index = () => {
                       <Button 
                         size="sm" 
                         onClick={() => completeChore(chore.id)}
-                        className="bg-blue-700 hover:bg-blue-800 w-full sm:w-auto"
+                        className="bg-green-700 hover:bg-green-800 w-full sm:w-auto"
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Done
@@ -442,7 +443,7 @@ const Index = () => {
               </CardTitle>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-600">
+                  <Button size="sm" className="h-8 bg-blue-700 hover:bg-blue-800">
                     <Plus className="h-4 w-4 mr-1" />
                     Add Item
                   </Button>
@@ -558,7 +559,7 @@ const Index = () => {
               </CardTitle>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-600">
+                  <Button size="sm" className="h-8 bg-blue-700 hover:bg-blue-800">
                     <Plus className="h-4 w-4 mr-1" />
                     Add Expense
                   </Button>
