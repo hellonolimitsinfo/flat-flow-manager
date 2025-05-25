@@ -139,6 +139,7 @@ export const HouseholdManagement = () => {
 
       if (householdError) throw householdError;
 
+      // Add the creator as an admin member
       const { error: memberError } = await supabase
         .from('household_members')
         .insert({
@@ -159,6 +160,7 @@ export const HouseholdManagement = () => {
         description: 'Your household has been set up successfully.',
       });
     } catch (error: any) {
+      console.error('Error creating household:', error);
       toast({
         title: 'Error',
         description: error.message,
