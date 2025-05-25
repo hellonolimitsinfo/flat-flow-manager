@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -701,7 +700,7 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Flatmates Stats - Moved to bottom */}
+        {/* Flatmate Stats - Moved to bottom */}
         <Card className="mt-6 sm:mt-8 bg-gray-800/80 border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-100">

@@ -150,6 +150,10 @@ export const HouseholdManagement = () => {
       if (memberError) throw memberError;
 
       setHousehold(householdData);
+      
+      // Fetch members to show the creator in the list
+      await fetchMembers(householdData.id);
+      
       toast({
         title: 'Household created!',
         description: 'Your household has been set up successfully.',
@@ -220,62 +224,83 @@ export const HouseholdManagement = () => {
 
     setInviteLoading(true);
     try {
-      // Send invitation email using Supabase Auth
-      const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(inviteEmail.trim(), {
-        data: {
+      // First check if user already exists and is already a member
+      const { data: existingMember } = await supabase
+        .from('household_members')
+        .select('id, profiles!inner(email)')
+        .eq('household_id', household.id)
+        .eq('profiles.email', inviteEmail.trim())
+        .single();
+
+      if (existingMember) {
+        toast({
+          title: 'Already a member',
+          description: 'This user is already a member of your household.',
+          variant: 'destructive',
+        });
+        setInviteLoading(false);
+        return;
+      }
+
+      // Check if there's already a pending invitation
+      const { data: existingInvite } = await supabase
+        .from('household_invitations')
+        .select('id')
+        .eq('household_id', household.id)
+        .eq('email', inviteEmail.trim())
+        .eq('status', 'pending')
+        .single();
+
+      if (existingInvite) {
+        toast({
+          title: 'Invitation already sent',
+          description: 'There is already a pending invitation for this email.',
+          variant: 'destructive',
+        });
+        setInviteLoading(false);
+        return;
+      }
+
+      // Create invitation record
+      const { data: inviteData, error: inviteError } = await supabase
+        .from('household_invitations')
+        .insert({
           household_id: household.id,
-          household_name: household.name,
-          invited_by: user?.email
+          email: inviteEmail.trim(),
+          invited_by: user?.id
+        })
+        .select()
+        .single();
+
+      if (inviteError) throw inviteError;
+
+      // Get current user's profile for the invitation email
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      const inviterName = profileData?.full_name || user?.email || 'Someone';
+
+      // Send invitation email via edge function
+      const { error: emailError } = await supabase.functions.invoke('send-household-invite', {
+        body: {
+          email: inviteEmail.trim(),
+          householdId: household.id,
+          householdName: household.name,
+          inviterName: inviterName,
+          token: inviteData.token
         }
       });
 
-      if (inviteError) {
-        // If admin invite fails, try to find existing user and add them directly
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', inviteEmail.trim())
-          .single();
-
-        if (profileData) {
-          // Check if already a member
-          const { data: existingMember } = await supabase
-            .from('household_members')
-            .select('id')
-            .eq('household_id', household.id)
-            .eq('user_id', profileData.id)
-            .single();
-
-          if (existingMember) {
-            toast({
-              title: 'Already a member',
-              description: 'This user is already a member of your household.',
-              variant: 'destructive',
-            });
-            return;
-          }
-
-          // Add existing user to household
-          const { error: memberError } = await supabase
-            .from('household_members')
-            .insert({
-              household_id: household.id,
-              user_id: profileData.id,
-              role: 'member'
-            });
-
-          if (memberError) throw memberError;
-
-          toast({
-            title: 'Member added!',
-            description: 'The existing user has been added to your household.',
-          });
-        } else {
-          toast({
-            title: 'Invitation sent!',
-            description: `An invitation email has been sent to ${inviteEmail}. They will be added to your household when they sign up.`,
-          });
-        }
+      if (emailError) {
+        console.error('Email sending error:', emailError);
+        // Don't throw here, as the invitation was created successfully
+        toast({
+          title: 'Invitation created',
+          description: 'Invitation was created but email could not be sent. Please share the invitation link manually.',
+        });
       } else {
         toast({
           title: 'Invitation sent!',
@@ -428,7 +453,7 @@ export const HouseholdManagement = () => {
               </SheetHeader>
               <div className="mt-6 space-y-4">
                 <div className="text-sm text-gray-400">
-                  Enter an email address to invite someone to your household. If they don't have an account, they'll receive an invitation to sign up.
+                  Enter an email address to invite someone to your household. They'll receive an invitation email to join.
                 </div>
                 <Input
                   placeholder="Enter email address"
