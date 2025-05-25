@@ -43,17 +43,21 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           description: 'Please check your email to verify your account.',
         });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
 
-        toast({
-          title: 'Welcome back!',
-          description: 'You have been signed in successfully.',
-        });
+        if (data.user) {
+          toast({
+            title: 'Welcome back!',
+            description: 'You have been signed in successfully.',
+          });
+          // Force redirect to homepage
+          window.location.href = '/';
+        }
       }
     } catch (error: any) {
       toast({
@@ -94,17 +98,17 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
               <Home className="h-5 w-5" />
             </Link>
           </div>
-          <CardTitle className="text-2xl text-gray-100">
+          <CardTitle className="text-xl md:text-2xl text-gray-100">
             {mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </CardTitle>
-          <CardDescription className="text-gray-400">
+          <CardDescription className="text-gray-400 text-sm md:text-base">
             {mode === 'login' 
               ? 'Sign in to your Flatmate Flow account' 
               : 'Join Flatmate Flow to manage your household'
             }
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
               <div>
@@ -196,7 +200,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm">
               {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
               {' '}
               <Link

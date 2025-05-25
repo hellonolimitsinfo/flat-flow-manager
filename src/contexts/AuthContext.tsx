@@ -33,6 +33,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Handle successful sign in with redirect
+        if (event === 'SIGNED_IN' && session) {
+          // Small delay to ensure state is updated before redirect
+          setTimeout(() => {
+            if (window.location.pathname.includes('/auth')) {
+              window.location.href = '/';
+            }
+          }, 100);
+        }
       }
     );
 
@@ -50,6 +60,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      // Force redirect to login page
+      window.location.href = '/auth/login';
     } catch (error) {
       console.error('Error signing out:', error);
     }

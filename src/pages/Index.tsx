@@ -11,6 +11,7 @@ import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/
 import { useForm } from "react-hook-form";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { HouseholdManagement } from "@/components/household/HouseholdManagement";
 
 interface Flatmate {
   id: string;
@@ -273,15 +274,20 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-8">
         {/* Header with auth */}
         <DashboardHeader />
 
+        {/* Household Management Section */}
+        <div className="mb-6 sm:mb-8">
+          <HouseholdManagement />
+        </div>
+
         {/* Urgent Alerts */}
         {urgentItems.length > 0 && (
-          <Card className="mb-8 border-amber-800 bg-amber-900/30">
+          <Card className="mb-6 sm:mb-8 border-amber-800 bg-amber-900/30">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-amber-400">
+              <CardTitle className="flex items-center gap-2 text-amber-400 text-lg sm:text-xl">
                 <AlertTriangle className="h-5 w-5" />
                 Urgent Items Needed
               </CardTitle>
@@ -289,7 +295,7 @@ const Index = () => {
             <CardContent>
               <div className="grid gap-3">
                 {urgentItems.map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-800/60 rounded-lg border border-amber-800/50">
+                  <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-800/60 rounded-lg border border-amber-800/50 gap-3">
                     <div>
                       <span className="font-medium text-gray-200">{item.name}</span>
                       <span className="text-sm text-gray-400 ml-2">
@@ -316,11 +322,11 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-8">
+        <div className="grid gap-6 lg:gap-8 xl:grid-cols-3">
           {/* Current Chores */}
           <Card className="bg-gray-800/80 border-gray-700">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="flex items-center gap-2 text-gray-100">
+              <CardTitle className="flex items-center gap-2 text-gray-100 text-lg">
                 <Calendar className="h-5 w-5" />
                 Current Chores
               </CardTitle>
@@ -328,10 +334,10 @@ const Index = () => {
                 <SheetTrigger asChild>
                   <Button size="sm" className="h-8 bg-gray-700 hover:bg-gray-600">
                     <Plus className="h-4 w-4 mr-1" />
-                    Add Chore
+                    <span className="hidden sm:inline">Add Chore</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent className="bg-gray-800 border-gray-700">
+                <SheetContent className="bg-gray-800 border-gray-700 w-full sm:max-w-md">
                   <SheetHeader>
                     <SheetTitle className="text-gray-100">Add New Chore</SheetTitle>
                     <SheetDescription className="text-gray-400">
@@ -382,10 +388,10 @@ const Index = () => {
               <div className="space-y-4">
                 {chores.map(chore => (
                   <div key={chore.id} className="p-4 border rounded-lg border-gray-700 bg-gray-800/50 hover:bg-gray-700/50 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium text-gray-200">{chore.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-gray-700 text-gray-300">{chore.frequency}</Badge>
+                    <div className="flex items-start justify-between mb-3 gap-2">
+                      <h3 className="font-medium text-gray-200 flex-1">{chore.name}</h3>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge variant="secondary" className="bg-gray-700 text-gray-300 text-xs">{chore.frequency}</Badge>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-200 hover:bg-gray-700">
@@ -404,7 +410,7 @@ const Index = () => {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-3 h-3 rounded-full ${flatmates[chore.currentTurn].color}`}></div>
                         <span className="text-sm font-medium text-gray-300">
@@ -415,7 +421,7 @@ const Index = () => {
                       <Button 
                         size="sm" 
                         onClick={() => completeChore(chore.id)}
-                        className="bg-blue-700 hover:bg-blue-800"
+                        className="bg-blue-700 hover:bg-blue-800 w-full sm:w-auto"
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Done
@@ -695,7 +701,7 @@ const Index = () => {
         </div>
 
         {/* Flatmates Stats - Moved to bottom */}
-        <Card className="mt-8 bg-gray-800/80 border-gray-700">
+        <Card className="mt-6 sm:mt-8 bg-gray-800/80 border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-100">
               <Users className="h-5 w-5" />
@@ -703,7 +709,7 @@ const Index = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {flatmates.map((flatmate, index) => (
                 <div key={flatmate.id} className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
                   <div className="flex items-center gap-3">
@@ -711,10 +717,10 @@ const Index = () => {
                     <span className="font-medium text-gray-200">{flatmate.name}</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-100">
+                    <div className="text-xl sm:text-2xl font-bold text-gray-100">
                       {flatmate.tasksCompleted}
                     </div>
-                    <div className="text-sm text-gray-400">tasks completed</div>
+                    <div className="text-xs sm:text-sm text-gray-400">tasks completed</div>
                   </div>
                 </div>
               ))}
