@@ -135,6 +135,7 @@ export type Database = {
           household_id: string
           id: string
           invited_by: string
+          invited_user_id: string | null
           status: string
           token: string
         }
@@ -145,6 +146,7 @@ export type Database = {
           household_id: string
           id?: string
           invited_by: string
+          invited_user_id?: string | null
           status?: string
           token?: string
         }
@@ -155,6 +157,7 @@ export type Database = {
           household_id?: string
           id?: string
           invited_by?: string
+          invited_user_id?: string | null
           status?: string
           token?: string
         }
@@ -166,6 +169,13 @@ export type Database = {
             referencedRelation: "households"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "household_invitations_invited_user_id_fkey"
+            columns: ["invited_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       household_members: {
@@ -173,21 +183,21 @@ export type Database = {
           household_id: string
           id: string
           joined_at: string
-          role: string | null
+          role: string
           user_id: string
         }
         Insert: {
           household_id: string
           id?: string
           joined_at?: string
-          role?: string | null
+          role?: string
           user_id: string
         }
         Update: {
           household_id?: string
           id?: string
           joined_at?: string
-          role?: string | null
+          role?: string
           user_id?: string
         }
         Relationships: [
@@ -196,6 +206,13 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -74,10 +75,12 @@ export const HouseholdManagement = () => {
 
   const fetchHousehold = async () => {
     try {
+      // Get the first household the user is a member of (for now, we'll show one household)
       const { data: memberData } = await supabase
         .from('household_members')
         .select('household_id, households(*)')
         .eq('user_id', user?.id)
+        .limit(1)
         .single();
 
       if (memberData?.households) {
@@ -123,27 +126,40 @@ export const HouseholdManagement = () => {
 
   const createHousehold = async (name: string) => {
     try {
-      // First ensure user has a profile with full_name
-      const { data: existingProfile } = await supabase
+      console.log('Creating household with user:', user);
+      
+      // Ensure the user's profile exists and has a full_name
+      const { data: existingProfile, error: profileFetchError } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, email')
         .eq('id', user?.id)
         .single();
 
-      if (!existingProfile?.full_name) {
+      if (profileFetchError && profileFetchError.code !== 'PGRST116') {
+        console.error('Error fetching profile:', profileFetchError);
+        throw profileFetchError;
+      }
+
+      // If profile doesn't exist or doesn't have a full_name, create/update it
+      if (!existingProfile || !existingProfile.full_name) {
+        const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+        console.log('Updating profile with full_name:', fullName);
+        
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({ 
             id: user?.id,
-            email: user?.email,
-            full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous User'
+            email: user?.email || '',
+            full_name: fullName
           });
 
         if (profileError) {
           console.error('Error updating profile:', profileError);
+          throw profileError;
         }
       }
 
+      // Create the household
       const { data: householdData, error: householdError } = await supabase
         .from('households')
         .insert({
@@ -155,6 +171,8 @@ export const HouseholdManagement = () => {
 
       if (householdError) throw householdError;
 
+      console.log('Created household:', householdData);
+
       // Add the creator as an admin member
       const { error: memberError } = await supabase
         .from('household_members')
@@ -164,11 +182,14 @@ export const HouseholdManagement = () => {
           role: 'admin'
         });
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('Error adding member:', memberError);
+        throw memberError;
+      }
 
       setHousehold(householdData);
       
-      // Wait a moment then fetch members to ensure the profile is available
+      // Wait a moment then fetch members to ensure everything is properly set up
       setTimeout(() => {
         fetchMembers(householdData.id);
       }, 500);
@@ -181,7 +202,7 @@ export const HouseholdManagement = () => {
       console.error('Error creating household:', error);
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to create household',
         variant: 'destructive',
       });
     }
@@ -242,21 +263,30 @@ export const HouseholdManagement = () => {
     if (!household) return;
 
     try {
-      // First check if user already exists and is already a member
-      const { data: existingMember } = await supabase
-        .from('household_members')
-        .select('id, profiles!inner(email)')
-        .eq('household_id', household.id)
-        .eq('profiles.email', email)
+      // Check if user already exists and is already a member
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
         .single();
 
-      if (existingMember) {
-        toast({
-          title: 'Already a member',
-          description: 'This user is already a member of your household.',
-          variant: 'destructive',
-        });
-        return;
+      if (existingUser) {
+        // Check if they're already a member
+        const { data: existingMember } = await supabase
+          .from('household_members')
+          .select('id')
+          .eq('household_id', household.id)
+          .eq('user_id', existingUser.id)
+          .single();
+
+        if (existingMember) {
+          toast({
+            title: 'Already a member',
+            description: 'This user is already a member of your household.',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
 
       // Check if there's already a pending invitation
@@ -283,7 +313,8 @@ export const HouseholdManagement = () => {
         .insert({
           household_id: household.id,
           email: email,
-          invited_by: user?.id
+          invited_by: user?.id,
+          invited_user_id: existingUser?.id || null
         })
         .select()
         .single();
@@ -312,7 +343,6 @@ export const HouseholdManagement = () => {
 
       if (emailError) {
         console.error('Email sending error:', emailError);
-        // Don't throw here, as the invitation was created successfully
         toast({
           title: 'Invitation created',
           description: 'Invitation was created but email could not be sent. Please share the invitation link manually.',
