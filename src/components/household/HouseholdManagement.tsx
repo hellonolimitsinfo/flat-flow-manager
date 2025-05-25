@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -149,6 +148,24 @@ export const HouseholdManagement = () => {
         });
 
       if (memberError) throw memberError;
+
+      // Ensure user has a profile with full_name
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      if (!existingProfile?.full_name) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ 
+            full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous User'
+          })
+          .eq('id', user?.id);
+
+        if (profileError) console.error('Error updating profile:', profileError);
+      }
 
       setHousehold(householdData);
       

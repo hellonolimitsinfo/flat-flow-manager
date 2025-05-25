@@ -43,6 +43,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
           }, 100);
         }
+        
+        // Handle sign out - redirect to login
+        if (event === 'SIGNED_OUT') {
+          window.location.href = '/auth/login';
+        }
       }
     );
 
@@ -60,10 +65,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // Force redirect to login page
-      window.location.href = '/auth/login';
+      // The redirect will be handled by the onAuthStateChange listener
     } catch (error) {
       console.error('Error signing out:', error);
+      // Force redirect even if signOut fails
+      window.location.href = '/auth/login';
     }
   };
 

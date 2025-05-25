@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { InviteHandler } from "@/components/auth/InviteHandler";
 import Index from "./pages/Index";
 import AuthLogin from "./pages/AuthLogin";
 import AuthSignup from "./pages/AuthSignup";
@@ -20,6 +21,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <InviteHandler />
           <Routes>
             <Route path="/auth/login" element={<AuthLogin />} />
             <Route path="/auth/signup" element={<AuthSignup />} />
