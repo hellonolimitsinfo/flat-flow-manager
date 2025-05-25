@@ -96,7 +96,7 @@ export const HouseholdManagement = () => {
       const targetHouseholdId = householdId || household?.id;
       if (!targetHouseholdId) return;
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('household_members')
         .select(`
           id,
@@ -106,6 +106,11 @@ export const HouseholdManagement = () => {
           profiles!inner(full_name, email, avatar_url)
         `)
         .eq('household_id', targetHouseholdId);
+
+      if (error) {
+        console.error('Error fetching members:', error);
+        return;
+      }
 
       if (data) {
         console.log('Fetched members:', data);
