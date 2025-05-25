@@ -3,10 +3,34 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export const DashboardHeader = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+
+  // Fetch user profile to get full name
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   const handleSignOut = async () => {
     try {
@@ -24,6 +48,8 @@ export const DashboardHeader = () => {
     }
   };
 
+  const displayName = profile?.full_name || user?.email || 'User';
+
   return (
     <div className="mb-8">
       {/* Profile and Sign Out Row */}
@@ -31,7 +57,7 @@ export const DashboardHeader = () => {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-gray-300">
             <User className="h-4 w-4" />
-            <span className="text-sm hidden sm:inline">{user?.email}</span>
+            <span className="text-sm hidden sm:inline">{displayName}</span>
           </div>
           <Button
             onClick={handleSignOut}
