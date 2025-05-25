@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -109,6 +108,7 @@ export const HouseholdManagement = () => {
         .eq('household_id', targetHouseholdId);
 
       if (data) {
+        console.log('Fetched members:', data);
         setMembers(data as any);
       }
     } catch (error) {
@@ -118,6 +118,27 @@ export const HouseholdManagement = () => {
 
   const createHousehold = async (name: string) => {
     try {
+      // First ensure user has a profile with full_name
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user?.id)
+        .single();
+
+      if (!existingProfile?.full_name) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({ 
+            id: user?.id,
+            email: user?.email,
+            full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous User'
+          });
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
+      }
+
       const { data: householdData, error: householdError } = await supabase
         .from('households')
         .insert({
@@ -140,28 +161,12 @@ export const HouseholdManagement = () => {
 
       if (memberError) throw memberError;
 
-      // Ensure user has a profile with full_name
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user?.id)
-        .single();
-
-      if (!existingProfile?.full_name) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Anonymous User'
-          })
-          .eq('id', user?.id);
-
-        if (profileError) console.error('Error updating profile:', profileError);
-      }
-
       setHousehold(householdData);
       
-      // Fetch members to show the creator in the list
-      await fetchMembers(householdData.id);
+      // Wait a moment then fetch members to ensure the profile is available
+      setTimeout(() => {
+        fetchMembers(householdData.id);
+      }, 500);
       
       toast({
         title: 'Household created!',
