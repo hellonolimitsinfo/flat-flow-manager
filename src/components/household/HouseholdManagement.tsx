@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -259,11 +260,37 @@ export const HouseholdManagement = () => {
   };
 
   const inviteMember = async (email: string) => {
-    if (!household) return;
+    if (!household || !user) {
+      console.error('No household or user found');
+      return;
+    }
 
     try {
       console.log('Starting invitation process for:', email);
+      console.log('Current household:', household);
+      console.log('Current user:', user.id);
       
+      // First, verify the user is an admin of this household
+      const { data: adminCheck, error: adminError } = await supabase
+        .from('household_members')
+        .select('role')
+        .eq('household_id', household.id)
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .single();
+
+      if (adminError || !adminCheck) {
+        console.error('User is not an admin of this household:', adminError);
+        toast({
+          title: 'Permission denied',
+          description: 'You must be an admin to invite members.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      console.log('Admin check passed');
+
       // Check if user already exists and is already a member
       const { data: existingUser } = await supabase
         .from('profiles')
@@ -310,15 +337,20 @@ export const HouseholdManagement = () => {
 
       console.log('Creating invitation record...');
       
-      // Create invitation record
+      // Create invitation record with all required fields
+      const invitationData = {
+        household_id: household.id,
+        email: email,
+        invited_by: user.id,
+        invited_user_id: existingUser?.id || null,
+        status: 'pending' as const
+      };
+
+      console.log('Invitation data to insert:', invitationData);
+      
       const { data: inviteData, error: inviteError } = await supabase
         .from('household_invitations')
-        .insert({
-          household_id: household.id,
-          email: email,
-          invited_by: user?.id,
-          invited_user_id: existingUser?.id || null
-        })
+        .insert(invitationData)
         .select()
         .single();
 
@@ -333,7 +365,7 @@ export const HouseholdManagement = () => {
       const { data: profileData } = await supabase
         .from('profiles')
         .select('full_name')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
 
       const inviterName = profileData?.full_name || user?.email || 'Someone';
