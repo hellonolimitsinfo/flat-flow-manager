@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -124,7 +123,7 @@ export const InviteAccept = () => {
         return;
       }
 
-      // Add user to household
+      // Step 1: Add user to household_members table
       const { error: memberError } = await supabase
         .from('household_members')
         .insert({
@@ -140,7 +139,7 @@ export const InviteAccept = () => {
 
       console.log('Successfully added user to household');
 
-      // Mark invitation as accepted
+      // Step 2: Mark invitation as accepted
       const { error: updateError } = await supabase
         .from('household_invitations')
         .update({ status: 'accepted' })
@@ -153,10 +152,10 @@ export const InviteAccept = () => {
 
       console.log('Successfully updated invitation status');
 
-      // Show success toast
+      // Show success toast with the actual household name
       toast({
         title: 'Welcome!',
-        description: `You have successfully joined ${invitation.households?.name}!`,
+        description: `You have successfully joined ${invitation.households.name}!`,
       });
 
       // Wait a moment for the toast to show, then redirect with full refresh
