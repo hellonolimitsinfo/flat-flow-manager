@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface InviteMemberSheetProps {
   onInviteMember: (email: string) => Promise<void>;
@@ -13,6 +14,7 @@ export const InviteMemberSheet = ({ onInviteMember }: InviteMemberSheetProps) =>
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const { toast } = useToast();
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -22,6 +24,17 @@ export const InviteMemberSheet = ({ onInviteMember }: InviteMemberSheetProps) =>
       await onInviteMember(inviteEmail.trim());
       setInviteEmail('');
       setOpen(false); // Close the sheet after successful invitation
+      toast({
+        title: 'Invitation sent!',
+        description: `An invitation has been sent to ${inviteEmail.trim()}`,
+      });
+    } catch (error: any) {
+      console.error('Error sending invitation:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send invitation. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setInviteLoading(false);
     }

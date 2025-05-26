@@ -168,10 +168,17 @@ export const InviteAccept = () => {
               You need to sign in to accept this invitation to join {invitation?.households?.name}.
             </p>
             <Button 
-              onClick={() => navigate('/auth/login')}
+              onClick={() => navigate(`/auth/login?redirect=/invite?token=${token}`)}
               className="w-full bg-blue-700 hover:bg-blue-800"
             >
               Sign In
+            </Button>
+            <Button 
+              onClick={() => navigate(`/auth/signup?redirect=/invite?token=${token}`)}
+              variant="outline"
+              className="w-full border-gray-600 text-gray-300 hover:bg-gray-700"
+            >
+              Create Account
             </Button>
           </CardContent>
         </Card>
