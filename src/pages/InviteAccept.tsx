@@ -8,13 +8,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
+interface Invitation {
+  id: string;
+  household_id: string;
+  email: string;
+  status: string;
+  expires_at: string;
+  households: {
+    id: string;
+    name: string;
+  };
+}
+
 export const InviteAccept = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [invitation, setInvitation] = useState<any>(null);
+  const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const token = searchParams.get('token');
@@ -52,6 +64,7 @@ export const InviteAccept = () => {
         .single();
 
       if (error || !data) {
+        console.error('Error fetching invitation:', error);
         toast({
           title: 'Invalid invitation',
           description: 'This invitation is invalid or has expired.',
@@ -91,6 +104,9 @@ export const InviteAccept = () => {
 
     setProcessing(true);
     try {
+      console.log('Accepting invitation for user:', user.id);
+      console.log('Household:', invitation.households);
+
       // Check if user is already a member
       const { data: existingMember } = await supabase
         .from('household_members')
@@ -117,7 +133,12 @@ export const InviteAccept = () => {
           role: 'member'
         });
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('Error adding member:', memberError);
+        throw memberError;
+      }
+
+      console.log('Successfully added user to household');
 
       // Mark invitation as accepted
       const { error: updateError } = await supabase
@@ -125,14 +146,20 @@ export const InviteAccept = () => {
         .update({ status: 'accepted' })
         .eq('id', invitation.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating invitation status:', updateError);
+        throw updateError;
+      }
+
+      console.log('Successfully updated invitation status');
 
       toast({
         title: 'Welcome!',
         description: `You have successfully joined ${invitation.households?.name}!`,
       });
 
-      navigate('/');
+      // Use window.location.href for a full page refresh to ensure state is updated
+      window.location.href = '/';
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
       toast({
