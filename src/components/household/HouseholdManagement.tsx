@@ -14,8 +14,8 @@ export const HouseholdManagement = () => {
   const { household, members, loading, setHousehold, setMembers, fetchMembers } = useHousehold();
   const { createHousehold, updateHouseholdName, deleteHousehold } = useHouseholdActions(
     household,
-    setHousehold,
-    setMembers,
+    (updatedHousehold) => setHousehold(updatedHousehold),
+    (updatedMembers) => setMembers(updatedMembers),
     fetchMembers
   );
   const { inviteMember } = useInvitation(household);
