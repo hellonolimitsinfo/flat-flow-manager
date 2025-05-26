@@ -12,6 +12,7 @@ interface InviteMemberSheetProps {
 export const InviteMemberSheet = ({ onInviteMember }: InviteMemberSheetProps) => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -20,13 +21,14 @@ export const InviteMemberSheet = ({ onInviteMember }: InviteMemberSheetProps) =>
     try {
       await onInviteMember(inviteEmail.trim());
       setInviteEmail('');
+      setOpen(false); // Close the sheet after successful invitation
     } finally {
       setInviteLoading(false);
     }
   };
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button size="sm" className="bg-blue-700 hover:bg-blue-800 whitespace-nowrap">
           <Plus className="h-4 w-4 mr-1" />
@@ -46,6 +48,11 @@ export const InviteMemberSheet = ({ onInviteMember }: InviteMemberSheetProps) =>
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             className="bg-gray-700 border-gray-600 text-gray-100"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !inviteLoading && inviteEmail.trim()) {
+                handleInvite();
+              }
+            }}
           />
           <Button
             onClick={handleInvite}

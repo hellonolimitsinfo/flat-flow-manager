@@ -25,11 +25,29 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    console.log('Received invite request');
+    
+    // Check if RESEND_API_KEY is configured
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
     const { email, householdId, householdName, inviterName, token }: InviteRequest = await req.json();
+    console.log('Processing invitation for:', email, 'to household:', householdName);
 
-    console.log('Sending invitation email to:', email);
+    // Get the site URL from environment
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://flat-flow-manager.lovable.app';
+    const inviteUrl = `${siteUrl}/invite?token=${token}`;
 
-    const inviteUrl = `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify?token=${token}&type=invite&redirect_to=${Deno.env.get('SITE_URL') || 'https://flat-flow-manager.lovable.app'}`;
+    console.log('Sending email with invite URL:', inviteUrl);
 
     const emailResponse = await resend.emails.send({
       from: "FlatFlow <onboarding@resend.dev>",
@@ -73,7 +91,10 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error sending invitation email:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack || 'No additional details available'
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
