@@ -153,13 +153,17 @@ export const InviteAccept = () => {
 
       console.log('Successfully updated invitation status');
 
+      // Show success toast
       toast({
         title: 'Welcome!',
         description: `You have successfully joined ${invitation.households?.name}!`,
       });
 
-      // Use window.location.href for a full page refresh to ensure state is updated
-      window.location.href = '/';
+      // Wait a moment for the toast to show, then redirect with full refresh
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
+
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
       toast({

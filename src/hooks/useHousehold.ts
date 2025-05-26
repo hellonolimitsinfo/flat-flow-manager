@@ -46,8 +46,10 @@ export const useHousehold = () => {
           schema: 'public',
           table: 'household_members'
         },
-        () => {
-          fetchMembers();
+        (payload) => {
+          console.log('Household member change detected:', payload);
+          // Refresh both household and members data
+          fetchHousehold();
         }
       )
       .on(
@@ -57,7 +59,8 @@ export const useHousehold = () => {
           schema: 'public',
           table: 'households'
         },
-        () => {
+        (payload) => {
+          console.log('Household change detected:', payload);
           fetchHousehold();
         }
       )
@@ -70,19 +73,34 @@ export const useHousehold = () => {
 
   const fetchHousehold = async () => {
     try {
-      const { data: memberData } = await supabase
+      setLoading(true);
+      console.log('Fetching household for user:', user?.id);
+      
+      const { data: memberData, error } = await supabase
         .from('household_members')
         .select('household_id, households(*)')
         .eq('user_id', user?.id)
         .limit(1)
         .single();
 
+      console.log('Household member data:', memberData);
+
+      if (error) {
+        console.log('No household found for user:', error);
+        setHousehold(null);
+        setMembers([]);
+        return;
+      }
+
       if (memberData?.households) {
+        console.log('Setting household:', memberData.households);
         setHousehold(memberData.households as any);
         fetchMembers(memberData.household_id);
       }
     } catch (error) {
       console.error('Error fetching household:', error);
+      setHousehold(null);
+      setMembers([]);
     } finally {
       setLoading(false);
     }
@@ -92,6 +110,8 @@ export const useHousehold = () => {
     try {
       const targetHouseholdId = householdId || household?.id;
       if (!targetHouseholdId) return;
+
+      console.log('Fetching members for household:', targetHouseholdId);
 
       const { data, error } = await supabase
         .from('household_members')
