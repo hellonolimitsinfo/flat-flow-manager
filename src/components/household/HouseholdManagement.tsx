@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -263,6 +262,8 @@ export const HouseholdManagement = () => {
     if (!household) return;
 
     try {
+      console.log('Starting invitation process for:', email);
+      
       // Check if user already exists and is already a member
       const { data: existingUser } = await supabase
         .from('profiles')
@@ -307,6 +308,8 @@ export const HouseholdManagement = () => {
         return;
       }
 
+      console.log('Creating invitation record...');
+      
       // Create invitation record
       const { data: inviteData, error: inviteError } = await supabase
         .from('household_invitations')
@@ -319,7 +322,12 @@ export const HouseholdManagement = () => {
         .select()
         .single();
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        console.error('Error creating invitation:', inviteError);
+        throw inviteError;
+      }
+
+      console.log('Invitation record created:', inviteData);
 
       // Get current user's profile for the invitation email
       const { data: profileData } = await supabase
@@ -330,8 +338,16 @@ export const HouseholdManagement = () => {
 
       const inviterName = profileData?.full_name || user?.email || 'Someone';
 
+      console.log('Calling edge function with data:', {
+        email,
+        householdId: household.id,
+        householdName: household.name,
+        inviterName,
+        token: inviteData.token
+      });
+
       // Send invitation email via edge function
-      const { error: emailError } = await supabase.functions.invoke('send-household-invite', {
+      const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-household-invite', {
         body: {
           email: email,
           householdId: household.id,
@@ -341,23 +357,47 @@ export const HouseholdManagement = () => {
         }
       });
 
+      console.log('Edge function response:', emailResponse);
+      console.log('Edge function error:', emailError);
+
       if (emailError) {
-        console.error('Email sending error:', emailError);
-        toast({
-          title: 'Invitation created',
-          description: 'Invitation was created but email could not be sent. Please share the invitation link manually.',
-        });
-      } else {
+        console.error('Edge function error:', emailError);
+        
+        // Check if it's a configuration error
+        if (emailError.message?.includes('RESEND_API_KEY')) {
+          toast({
+            title: 'Email service not configured',
+            description: 'The email service is not properly configured. Please check your Resend API key.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Failed to send email',
+            description: emailError.message || 'Could not send invitation email. The invitation has been created but no email was sent.',
+          });
+        }
+        return;
+      }
+
+      // Check if the response indicates success
+      if (emailResponse?.success) {
         toast({
           title: 'Invitation sent!',
           description: `An invitation email has been sent to ${email}.`,
         });
+      } else {
+        console.error('Unexpected response from edge function:', emailResponse);
+        toast({
+          title: 'Invitation created',
+          description: 'Invitation was created but email sending status is unclear.',
+        });
       }
+
     } catch (error: any) {
       console.error('Invite error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send invitation. Please try again.',
+        description: error.message || 'Failed to send invitation. Please try again.',
         variant: 'destructive',
       });
     }
