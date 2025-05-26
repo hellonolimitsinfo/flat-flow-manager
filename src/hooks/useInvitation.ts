@@ -128,7 +128,12 @@ export const useInvitation = (household: Household | null) => {
 
       if (inviteError) {
         console.error('Error creating invitation:', inviteError);
-        throw inviteError;
+        toast({
+          title: 'Database error',
+          description: `Failed to create invitation: ${inviteError.message}`,
+          variant: 'destructive',
+        });
+        return;
       }
 
       console.log('Invitation record created:', inviteData);
@@ -176,8 +181,9 @@ export const useInvitation = (household: Household | null) => {
           });
         } else {
           toast({
-            title: 'Failed to send email',
-            description: emailError.message || 'Could not send invitation email. The invitation has been created but no email was sent.',
+            title: 'Email error',
+            description: `Failed to send email: ${emailError.message}`,
+            variant: 'destructive',
           });
         }
         return;
@@ -192,8 +198,8 @@ export const useInvitation = (household: Household | null) => {
       } else {
         console.error('Unexpected response from edge function:', emailResponse);
         toast({
-          title: 'Invitation created',
-          description: 'Invitation was created but email sending status is unclear.',
+          title: 'Email status unclear',
+          description: 'Invitation was created but email sending status is unclear. Check the logs.',
         });
       }
 
