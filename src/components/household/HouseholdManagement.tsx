@@ -262,24 +262,40 @@ export const HouseholdManagement = () => {
   const inviteMember = async (email: string) => {
     if (!household || !user) {
       console.error('No household or user found');
+      toast({
+        title: 'Error',
+        description: 'No household or user session found.',
+        variant: 'destructive',
+      });
       return;
     }
 
     try {
       console.log('Starting invitation process for:', email);
       console.log('Current household:', household);
-      console.log('Current user:', user.id);
+      console.log('Current user ID:', user.id);
       
-      // First, verify the user is an admin of this household
+      // Get the current session to ensure we have a valid JWT
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No active session found');
+        toast({
+          title: 'Authentication required',
+          description: 'Please log in again to send invitations.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Verify the user is an admin of this household
       const { data: adminCheck, error: adminError } = await supabase
         .from('household_members')
         .select('role')
         .eq('household_id', household.id)
         .eq('user_id', user.id)
-        .eq('role', 'admin')
         .single();
 
-      if (adminError || !adminCheck) {
+      if (adminError || !adminCheck || adminCheck.role !== 'admin') {
         console.error('User is not an admin of this household:', adminError);
         toast({
           title: 'Permission denied',
@@ -337,11 +353,11 @@ export const HouseholdManagement = () => {
 
       console.log('Creating invitation record...');
       
-      // Create invitation record with all required fields
+      // Create invitation record with all required fields matching RLS policy
       const invitationData = {
         household_id: household.id,
         email: email,
-        invited_by: user.id,
+        invited_by: user.id, // This is crucial for RLS policy
         invited_user_id: existingUser?.id || null,
         status: 'pending' as const
       };
@@ -350,7 +366,7 @@ export const HouseholdManagement = () => {
       
       const { data: inviteData, error: inviteError } = await supabase
         .from('household_invitations')
-        .insert(invitationData)
+        .insert([invitationData]) // Use array format as suggested
         .select()
         .single();
 
