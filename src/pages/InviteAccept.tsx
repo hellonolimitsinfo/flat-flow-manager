@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +17,7 @@ interface Invitation {
   households: {
     id: string;
     name: string;
-  };
+  } | null;
 }
 
 export const InviteAccept = () => {
@@ -53,7 +54,7 @@ export const InviteAccept = () => {
           email,
           status,
           expires_at,
-          households (
+          households!inner (
             id,
             name
           )
@@ -210,7 +211,7 @@ export const InviteAccept = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-300 text-center">
-              You need to sign in to accept this invitation to join {invitation?.households?.name}.
+              You need to sign in to accept this invitation to join {invitation?.households?.name || 'the household'}.
             </p>
             <Button 
               onClick={() => navigate(`/auth/login?redirect=/invite?token=${token}`)}
@@ -243,7 +244,7 @@ export const InviteAccept = () => {
               You've been invited to join:
             </p>
             <h3 className="text-xl font-semibold text-gray-100">
-              {invitation?.households?.name}
+              {invitation?.households?.name || 'Unknown Household'}
             </h3>
           </div>
           <Button
