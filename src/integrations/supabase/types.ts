@@ -320,8 +320,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_valid_invitation: {
+        Args: { target_household_id: string; user_email: string }
+        Returns: boolean
+      }
       user_belongs_to_household: {
         Args: { household_id: string; user_id: string }
+        Returns: boolean
+      }
+      user_belongs_to_household_check: {
+        Args: { target_household_id: string; target_user_id: string }
         Returns: boolean
       }
       user_is_household_admin: {

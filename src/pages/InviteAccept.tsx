@@ -99,22 +99,32 @@ export const InviteAccept = () => {
   };
 
   const acceptInvitation = async () => {
-    if (!user || !invitation) return;
+    if (!user || !invitation) {
+      console.error('No user or invitation found');
+      return;
+    }
 
     setProcessing(true);
     try {
       console.log('Accepting invitation for user:', user.id);
       console.log('Household:', invitation.households);
+      console.log('User email:', user.email);
 
       // Check if user is already a member
-      const { data: existingMember } = await supabase
+      const { data: existingMember, error: memberCheckError } = await supabase
         .from('household_members')
         .select('id')
         .eq('household_id', invitation.household_id)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (memberCheckError) {
+        console.error('Error checking existing membership:', memberCheckError);
+        throw new Error('Failed to check existing membership');
+      }
 
       if (existingMember) {
+        console.log('User is already a member');
         toast({
           title: 'Already a member',
           description: 'You are already a member of this household.',
@@ -123,21 +133,25 @@ export const InviteAccept = () => {
         return;
       }
 
+      console.log('Adding user to household members...');
+
       // Step 1: Add user to household_members table
-      const { error: memberError } = await supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('household_members')
         .insert({
           household_id: invitation.household_id,
           user_id: user.id,
           role: 'member'
-        });
+        })
+        .select()
+        .single();
 
       if (memberError) {
         console.error('Error adding member:', memberError);
-        throw memberError;
+        throw new Error(`Failed to add member: ${memberError.message}`);
       }
 
-      console.log('Successfully added user to household');
+      console.log('Successfully added user to household:', memberData);
 
       // Step 2: Mark invitation as accepted
       const { error: updateError } = await supabase
@@ -147,10 +161,11 @@ export const InviteAccept = () => {
 
       if (updateError) {
         console.error('Error updating invitation status:', updateError);
-        throw updateError;
+        // Don't throw here as the member was already added successfully
+        console.warn('Member was added but invitation status update failed');
+      } else {
+        console.log('Successfully updated invitation status');
       }
-
-      console.log('Successfully updated invitation status');
 
       // Show success toast with the actual household name
       toast({
@@ -167,7 +182,7 @@ export const InviteAccept = () => {
       console.error('Error accepting invitation:', error);
       toast({
         title: 'Error',
-        description: 'Failed to accept invitation. Please try again.',
+        description: error.message || 'Failed to accept invitation. Please try again.',
         variant: 'destructive',
       });
     } finally {
