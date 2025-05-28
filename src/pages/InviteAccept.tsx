@@ -33,8 +33,10 @@ export const InviteAccept = () => {
 
   useEffect(() => {
     if (token) {
+      console.log('Token from URL:', token);
       fetchInvitation();
     } else {
+      console.log('No token found in URL');
       toast({
         title: 'Invalid invitation',
         description: 'No invitation token found.',
@@ -46,6 +48,29 @@ export const InviteAccept = () => {
 
   const fetchInvitation = async () => {
     try {
+      console.log('Fetching invitation for token:', token);
+      
+      // First, let's try to find any invitation with this token regardless of status
+      const { data: debugData, error: debugError } = await supabase
+        .from('household_invitations')
+        .select(`
+          id,
+          household_id,
+          email,
+          status,
+          expires_at,
+          token,
+          households!inner (
+            id,
+            name
+          )
+        `)
+        .eq('token', token);
+
+      console.log('Debug query result:', debugData);
+      console.log('Debug query error:', debugError);
+
+      // Now try the original query with pending status
       const { data, error } = await supabase
         .from('household_invitations')
         .select(`
@@ -63,8 +88,47 @@ export const InviteAccept = () => {
         .eq('status', 'pending')
         .single();
 
-      if (error || !data) {
+      console.log('Main query result:', data);
+      console.log('Main query error:', error);
+
+      if (error) {
         console.error('Error fetching invitation:', error);
+        
+        // Check if it's because the invitation is not pending
+        if (debugData && debugData.length > 0) {
+          const inv = debugData[0];
+          if (inv.status === 'accepted') {
+            toast({
+              title: 'Invitation already used',
+              description: 'This invitation has already been accepted.',
+              variant: 'destructive',
+            });
+          } else if (inv.status === 'declined') {
+            toast({
+              title: 'Invitation declined',
+              description: 'This invitation has been declined.',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Invalid invitation',
+              description: `This invitation is ${inv.status}.`,
+              variant: 'destructive',
+            });
+          }
+        } else {
+          toast({
+            title: 'Invalid invitation',
+            description: 'This invitation is invalid or has expired.',
+            variant: 'destructive',
+          });
+        }
+        navigate('/');
+        return;
+      }
+
+      if (!data) {
+        console.log('No invitation data found');
         toast({
           title: 'Invalid invitation',
           description: 'This invitation is invalid or has expired.',
@@ -75,7 +139,13 @@ export const InviteAccept = () => {
       }
 
       // Check if invitation has expired
-      if (new Date(data.expires_at) < new Date()) {
+      const expiresAt = new Date(data.expires_at);
+      const now = new Date();
+      console.log('Invitation expires at:', expiresAt);
+      console.log('Current time:', now);
+      
+      if (expiresAt < now) {
+        console.log('Invitation has expired');
         toast({
           title: 'Invitation expired',
           description: 'This invitation has expired.',
@@ -85,6 +155,7 @@ export const InviteAccept = () => {
         return;
       }
 
+      console.log('Valid invitation found:', data);
       setInvitation(data);
     } catch (error) {
       console.error('Error fetching invitation:', error);
