@@ -17,7 +17,7 @@ interface Invitation {
   households: {
     id: string;
     name: string;
-  } | null;
+  };
 }
 
 export const InviteAccept = () => {
@@ -50,92 +50,94 @@ export const InviteAccept = () => {
     try {
       console.log('Fetching invitation for token:', token);
       
-      // Use the service role or a public function to fetch invitation data
-      // Since RLS might be blocking, let's try a different approach
-      const { data, error } = await supabase
-        .rpc('get_invitation_by_token', { invitation_token: token });
+      // Fetch invitation with household data properly joined
+      const { data: invitationData, error } = await supabase
+        .from('household_invitations')
+        .select(`
+          id,
+          household_id,
+          email,
+          status,
+          expires_at,
+          households!inner (
+            id,
+            name
+          )
+        `)
+        .eq('token', token)
+        .maybeSingle();
 
-      console.log('RPC query result:', data);
-      console.log('RPC query error:', error);
+      console.log('Query result:', invitationData);
+      console.log('Query error:', error);
 
       if (error) {
-        console.error('Error fetching invitation via RPC:', error);
-        
-        // Fallback to direct query without RLS restrictions
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('household_invitations')
-          .select(`
-            id,
-            household_id,
-            email,
-            status,
-            expires_at,
-            households!inner (
-              id,
-              name
-            )
-          `)
-          .eq('token', token)
-          .maybeSingle();
-
-        console.log('Fallback query result:', fallbackData);
-        console.log('Fallback query error:', fallbackError);
-
-        if (fallbackError || !fallbackData) {
-          toast({
-            title: 'Invalid invitation',
-            description: 'This invitation is invalid or has expired.',
-            variant: 'destructive',
-          });
-          navigate('/');
-          return;
-        }
-
-        // Check invitation status
-        if (fallbackData.status !== 'pending') {
-          let title = 'Invalid invitation';
-          let description = 'This invitation is no longer valid.';
-          
-          if (fallbackData.status === 'accepted') {
-            title = 'Invitation already used';
-            description = 'This invitation has already been accepted.';
-          } else if (fallbackData.status === 'declined') {
-            title = 'Invitation declined';
-            description = 'This invitation has been declined.';
-          }
-          
-          toast({
-            title,
-            description,
-            variant: 'destructive',
-          });
-          navigate('/');
-          return;
-        }
-
-        // Check if invitation has expired
-        const expiresAt = new Date(fallbackData.expires_at);
-        const now = new Date();
-        console.log('Invitation expires at:', expiresAt);
-        console.log('Current time:', now);
-        
-        if (expiresAt < now) {
-          console.log('Invitation has expired');
-          toast({
-            title: 'Invitation expired',
-            description: 'This invitation has expired.',
-            variant: 'destructive',
-          });
-          navigate('/');
-          return;
-        }
-
-        console.log('Valid invitation found:', fallbackData);
-        setInvitation(fallbackData);
-      } else {
-        // Handle RPC success case here if we implement the RPC function
-        setInvitation(data);
+        console.error('Error fetching invitation:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load invitation.',
+          variant: 'destructive',
+        });
+        navigate('/');
+        return;
       }
+
+      if (!invitationData) {
+        console.log('No invitation found for token');
+        toast({
+          title: 'Invalid invitation',
+          description: 'This invitation is invalid or has expired.',
+          variant: 'destructive',
+        });
+        navigate('/');
+        return;
+      }
+
+      // Debug: Let's also check what we got regardless of status
+      console.log('Invitation found:', invitationData);
+      console.log('Invitation status:', invitationData.status);
+      console.log('Household data:', invitationData.households);
+
+      // Check invitation status
+      if (invitationData.status !== 'pending') {
+        let title = 'Invalid invitation';
+        let description = 'This invitation is no longer valid.';
+        
+        if (invitationData.status === 'accepted') {
+          title = 'Invitation already used';
+          description = 'This invitation has already been accepted.';
+        } else if (invitationData.status === 'declined') {
+          title = 'Invitation declined';
+          description = 'This invitation has been declined.';
+        }
+        
+        toast({
+          title,
+          description,
+          variant: 'destructive',
+        });
+        navigate('/');
+        return;
+      }
+
+      // Check if invitation has expired
+      const expiresAt = new Date(invitationData.expires_at);
+      const now = new Date();
+      console.log('Invitation expires at:', expiresAt);
+      console.log('Current time:', now);
+      
+      if (expiresAt < now) {
+        console.log('Invitation has expired');
+        toast({
+          title: 'Invitation expired',
+          description: 'This invitation has expired.',
+          variant: 'destructive',
+        });
+        navigate('/');
+        return;
+      }
+
+      console.log('Valid invitation found:', invitationData);
+      setInvitation(invitationData as Invitation);
     } catch (error) {
       console.error('Error fetching invitation:', error);
       toast({
