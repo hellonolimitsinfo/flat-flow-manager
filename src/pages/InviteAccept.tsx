@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -197,7 +196,7 @@ export const InviteAccept = () => {
           role: 'member'
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (memberError) {
         console.error('Error adding member:', memberError);
