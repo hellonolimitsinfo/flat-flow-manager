@@ -50,113 +50,92 @@ export const InviteAccept = () => {
     try {
       console.log('Fetching invitation for token:', token);
       
-      // First, let's try to find any invitation with this token regardless of status
-      const { data: debugData, error: debugError } = await supabase
-        .from('household_invitations')
-        .select(`
-          id,
-          household_id,
-          email,
-          status,
-          expires_at,
-          token,
-          households!inner (
-            id,
-            name
-          )
-        `)
-        .eq('token', token);
-
-      console.log('Debug query result:', debugData);
-      console.log('Debug query error:', debugError);
-
-      // Now try the original query with pending status
+      // Use the service role or a public function to fetch invitation data
+      // Since RLS might be blocking, let's try a different approach
       const { data, error } = await supabase
-        .from('household_invitations')
-        .select(`
-          id,
-          household_id,
-          email,
-          status,
-          expires_at,
-          households!inner (
-            id,
-            name
-          )
-        `)
-        .eq('token', token)
-        .eq('status', 'pending')
-        .single();
+        .rpc('get_invitation_by_token', { invitation_token: token });
 
-      console.log('Main query result:', data);
-      console.log('Main query error:', error);
+      console.log('RPC query result:', data);
+      console.log('RPC query error:', error);
 
       if (error) {
-        console.error('Error fetching invitation:', error);
+        console.error('Error fetching invitation via RPC:', error);
         
-        // Check if it's because the invitation is not pending
-        if (debugData && debugData.length > 0) {
-          const inv = debugData[0];
-          if (inv.status === 'accepted') {
-            toast({
-              title: 'Invitation already used',
-              description: 'This invitation has already been accepted.',
-              variant: 'destructive',
-            });
-          } else if (inv.status === 'declined') {
-            toast({
-              title: 'Invitation declined',
-              description: 'This invitation has been declined.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: 'Invalid invitation',
-              description: `This invitation is ${inv.status}.`,
-              variant: 'destructive',
-            });
-          }
-        } else {
+        // Fallback to direct query without RLS restrictions
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('household_invitations')
+          .select(`
+            id,
+            household_id,
+            email,
+            status,
+            expires_at,
+            households!inner (
+              id,
+              name
+            )
+          `)
+          .eq('token', token)
+          .maybeSingle();
+
+        console.log('Fallback query result:', fallbackData);
+        console.log('Fallback query error:', fallbackError);
+
+        if (fallbackError || !fallbackData) {
           toast({
             title: 'Invalid invitation',
             description: 'This invitation is invalid or has expired.',
             variant: 'destructive',
           });
+          navigate('/');
+          return;
         }
-        navigate('/');
-        return;
-      }
 
-      if (!data) {
-        console.log('No invitation data found');
-        toast({
-          title: 'Invalid invitation',
-          description: 'This invitation is invalid or has expired.',
-          variant: 'destructive',
-        });
-        navigate('/');
-        return;
-      }
+        // Check invitation status
+        if (fallbackData.status !== 'pending') {
+          let title = 'Invalid invitation';
+          let description = 'This invitation is no longer valid.';
+          
+          if (fallbackData.status === 'accepted') {
+            title = 'Invitation already used';
+            description = 'This invitation has already been accepted.';
+          } else if (fallbackData.status === 'declined') {
+            title = 'Invitation declined';
+            description = 'This invitation has been declined.';
+          }
+          
+          toast({
+            title,
+            description,
+            variant: 'destructive',
+          });
+          navigate('/');
+          return;
+        }
 
-      // Check if invitation has expired
-      const expiresAt = new Date(data.expires_at);
-      const now = new Date();
-      console.log('Invitation expires at:', expiresAt);
-      console.log('Current time:', now);
-      
-      if (expiresAt < now) {
-        console.log('Invitation has expired');
-        toast({
-          title: 'Invitation expired',
-          description: 'This invitation has expired.',
-          variant: 'destructive',
-        });
-        navigate('/');
-        return;
-      }
+        // Check if invitation has expired
+        const expiresAt = new Date(fallbackData.expires_at);
+        const now = new Date();
+        console.log('Invitation expires at:', expiresAt);
+        console.log('Current time:', now);
+        
+        if (expiresAt < now) {
+          console.log('Invitation has expired');
+          toast({
+            title: 'Invitation expired',
+            description: 'This invitation has expired.',
+            variant: 'destructive',
+          });
+          navigate('/');
+          return;
+        }
 
-      console.log('Valid invitation found:', data);
-      setInvitation(data);
+        console.log('Valid invitation found:', fallbackData);
+        setInvitation(fallbackData);
+      } else {
+        // Handle RPC success case here if we implement the RPC function
+        setInvitation(data);
+      }
     } catch (error) {
       console.error('Error fetching invitation:', error);
       toast({
@@ -242,7 +221,7 @@ export const InviteAccept = () => {
       // Show success toast with the actual household name
       toast({
         title: 'Welcome!',
-        description: `You have successfully joined ${invitation.households.name}!`,
+        description: `You have successfully joined ${invitation.households?.name}!`,
       });
 
       // Wait a moment for the toast to show, then redirect with full refresh
